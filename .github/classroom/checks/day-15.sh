@@ -1,5 +1,5 @@
 #!/bin/bash
-# PRAXIS Tag 12 — DevSecOps. Geprüft wird das Wurzel-Verzeichnis: die Workflows
+# PRAXIS Tag 15 — DevSecOps. Geprüft wird das Wurzel-Verzeichnis: die Workflows
 # liegen in .github/workflows/ — genau dort, wo GitHub Actions sie ausführt.
 source .github/classroom/grade.sh
 
@@ -18,7 +18,7 @@ solution_for_id() {
   esac
 }
 
-echo "🔍 Prüfe Abnahmekriterien für Tag 12 Praxis — DevSecOps (SAST, DAST, CI-Integration)"
+echo "🔍 Prüfe Abnahmekriterien für Tag 15 Praxis — DevSecOps (SAST, DAST, CI-Integration)"
 echo ""
 
 WF=.github/workflows
@@ -83,4 +83,4 @@ check "praxis-doku" \
   "Doku: DOKUMENTATION.md hat ausreichend Inhalt (mind. 100 Wörter)" \
   "[ \$(wc -w < $DOKU 2>/dev/null) -ge 100 ]"
 
-summary 12
+summary 15
