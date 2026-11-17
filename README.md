@@ -1,130 +1,138 @@
-# Tag 15 Praxis — DevSecOps (SAST, DAST, CI-Integration)
+# Tag 15 Praxis — DevSecOps (Snyk und OWASP ZAP)
 
-> **Praxisauftraege.** Dieses Repository ist dein Arbeitsplatz fuer die
-> Praxis-Uebungen von Tag 15. Es enthaelt bewusst nur das Geruest —
-> jede Datei schreibst du selbst.
+> **Praxisauftrag, Einzelarbeit.** Dieses Repository ist dein Arbeitsplatz für
+> die Praxis von Tag 15. Es enthält die absichtlich verwundbare Übungsanwendung
+> **DSVPWA** (Damn Simple Vulnerable Python Web Application) und die Vorlage
+> `findings.md` für deine Ergebnisse.
 
 ## Ausgangslage
 
-DevSecOps mit **Snyk** (SAST/SCA) und **OWASP ZAP** (DAST). Die Auftraege bauen
-aufeinander auf: zuerst wird der ruhende Code statisch geprueft, dann die
-laufende Anwendung dynamisch getestet, und schliesslich werden beide
-Pruefungen in eine GitHub-Actions-Pipeline automatisiert.
+Du prüfst DSVPWA mit zwei Verfahren: zuerst den ruhenden Code mit **Snyk**
+(SCA und SAST), danach die laufende Anwendung mit **OWASP ZAP** (DAST). Du
+arbeitest **nur lokal** mit den Tools. Den Einbau in eine Pipeline machst du
+anschliessend im Projekt am TechStyle-Shop.
 
-Als Uebungsobjekt dient die absichtlich verwundbare Anwendung **DSVPWA**
-(Damn Simple Vulnerable Python Web Application):
-<https://github.com/tbzdevops/DSVPWA>
+Die vollständige Anleitung steht in der Tagesplanung von Tag 15, Abschnitt
+**Praxis**. Hinweise zur Anwendung selbst stehen in [`DSVPWA.md`](DSVPWA.md).
 
-## Ordnerstruktur
-
-Alle Dateien gehoeren ins **Wurzel-Verzeichnis** dieses Repos bzw. in
-`.github/workflows/` — nur dort fuehrt GitHub Actions Workflows aus. Lege
-keine Unterordner pro Auftrag an; die automatische Pruefung sucht die
-Dateien genau hier.
-
-```
-.github/workflows/aufgabe1-sast-sca.yml   # Auftrag 3: Snyk (SAST + SCA)
-.github/workflows/aufgabe2-dast.yml       # Auftrag 3: OWASP ZAP (DAST)
-DOKUMENTATION.md                          # Auftrag 1 + 2: deine Befunde
-```
-
-> Die beiden Workflows gehoeren spaeter in deinen **DSVPWA-Fork**. Lege sie
-> hier trotzdem unter `.github/workflows/` an — das ist der Pfad, den GitHub
-> Actions liest, und die Pruefung sucht sie dort.
+> ⚠️ DSVPWA ist absichtlich unsicher. Starte sie nur lokal oder im Codespace,
+> nie auf einem öffentlich erreichbaren Server.
 
 ## Aufgaben
 
-### Auftrag 1 — Statische Code-Analyse mit Snyk (SAST + SCA)
+| Phase | Auftrag | Zeit | Ergebnis in `findings.md` |
+|-------|---------|------|---------------------------|
+| Praxis 1 | **P0** Setup | 10 Min | – |
+| Praxis 1 | **P1** SCA und SAST mit Snyk | 20 Min | Drei bewertete Findings |
+| Praxis 2 | **P2** DAST mit ZAP und Fund von Hand prüfen | 20 Min | Zwei ZAP-Alerts, verifizierte SQL-Injection, Vergleich SAST / DAST |
+| für Schnelle | **P3** Fix und Re-Scan | 10 Min | Behobene SQL-Injection |
 
-Lokale Uebung mit der Snyk-CLI an der geforkten DSVPWA-App.
+### P0 — Setup
 
-- Snyk-Account anlegen, Projekt-Token als GitHub Secret `SNYK_TOKEN`
-  hinterlegen.
-- `snyk test` (Dependencies/SCA) und `snyk code test` (Code/SAST) ausfuehren.
-- Halte die Befunde in `DOKUMENTATION.md` fest: Schwachstelle, Severity,
-  moegliche Behebung.
+1. Öffne dieses Repository in einem **GitHub Codespace**: **Code** →
+   **Codespaces** → **Create codespace on main**. Python, Node.js und Docker
+   sind dort installiert.
+2. Erstelle einen Account auf [app.snyk.io](https://app.snyk.io/login) und
+   aktiviere **Settings** → **Snyk Code** → **Enable Snyk Code**.
+3. `npm install -g snyk` und `snyk auth`.
 
-### Auftrag 2 — Dynamischer Sicherheitstest mit OWASP ZAP (DAST)
+### P1 — SCA und SAST mit Snyk
 
-Lokale Uebung: DSVPWA starten und mit OWASP ZAP im Docker-Container
-scannen.
+```bash
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+snyk test                         # SCA: Bibliotheken aus requirements.txt
+snyk code test                    # SAST: eigener Quellcode
+```
 
-- Anwendung lokal starten und erreichbar machen.
-- ZAP Baseline Scan gegen die laufende Anwendung ausfuehren.
-- Ergaenze die Befunde in `DOKUMENTATION.md` und vergleiche sie mit den
-  SAST-Ergebnissen aus Auftrag 1.
+Trage **drei Findings** in `findings.md` ein, mindestens eines aus SCA und
+eines aus SAST. Entscheide jeweils: echtes Risiko oder False Positive? Und
+welche Massnahme?
 
-### Auftrag 3 — Security-Scans in die CI/CD-Pipeline einbauen
+### P2 — DAST mit OWASP ZAP
 
-Ueberfuehre beide Pruefungen in GitHub Actions.
+```bash
+python dsvpwa.py --host 0.0.0.0   # Terminal 1, Port 65413
 
-- `.github/workflows/aufgabe1-sast-sca.yml`:
-  Snyk einbinden (z. B. `snyk/actions/python@master`), `SNYK_TOKEN` als
-  Secret, `--severity-threshold=high` und `--sarif-file-output`, danach
-  `github/codeql-action/upload-sarif@v3`.
-- `.github/workflows/aufgabe2-dast.yml`:
-  Anwendung im Workflow starten und `zaproxy/action-baseline` gegen die
-  Ziel-URL laufen lassen.
+# Terminal 2, Codespace / Linux
+docker run --rm --network host -t zaproxy/zap-stable zap-baseline.py -t http://localhost:65413
+# Docker Desktop (macOS / Windows)
+docker run --rm -t zaproxy/zap-stable zap-baseline.py -t http://host.docker.internal:65413
+```
+
+Dokumentiere **zwei Alerts**. Der Baseline-Scan ist passiv und findet die
+SQL-Injection nicht. Prüfe sie von Hand:
+
+```bash
+curl "http://localhost:65413/users?id=1"
+curl "http://localhost:65413/users?id=1%20OR%201=1"
+```
+
+Halte Request und Beobachtung fest und fülle die Vergleichstabelle aus: Was hat
+nur SAST gefunden, was nur DAST?
+
+### P3 — Fix und Re-Scan (für Schnelle)
+
+Ersetze in `dsvpwa/attacks.py`, Zeile 39, die String-Verkettung durch einen
+parametrisierten Query, wiederhole den Angriff und `snyk code test`, und
+pushe den Fix zusammen mit `findings.md`.
 
 ## Abnahmekriterien
 
-Diese Kriterien prueft die Pipeline bei jedem Push automatisch. **Die Haken
-setzt die Pipeline selbst:** ein erfuelltes Kriterium wird abgehakt, und
-sobald eine Aenderung es wieder bricht, verschwindet der Haken. Du musst hier
-nichts von Hand pflegen — beim naechsten Push wird die Liste ueberschrieben.
+Diese Kriterien prüft die Pipeline bei jedem Push automatisch. **Die Haken
+setzt die Pipeline selbst:** Ein erfülltes Kriterium wird abgehakt, und
+sobald eine Änderung es wieder bricht, verschwindet der Haken. Du musst hier
+nichts von Hand pflegen, beim nächsten Push wird die Liste überschrieben.
 
 <!-- c50:progress -->
-**Fortschritt: 0 / 11 Kriterien erfüllt** ⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ — Stand: 2026-08-24 21:16 UTC.
+**Fortschritt: 0 / 6 Kriterien erfüllt** ⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜
 <!-- /c50:progress -->
 
-- [ ] ⬜ Aufgabe 1: SAST/SCA-Workflow vorhanden (.github/workflows/)
-- [ ] ⬜ Aufgabe 1: Snyk ist in den Workflow eingebunden
-- [ ] ⬜ Aufgabe 1: SNYK_TOKEN als GitHub Secret referenziert
-- [ ] ⬜ Aufgabe 1: Severity-Threshold gesetzt (z. B. --severity-threshold=high)
-- [ ] ⬜ Aufgabe 1: SARIF-Report wird erzeugt und hochgeladen
-- [ ] ⬜ Aufgabe 2: DAST-Workflow vorhanden (.github/workflows/)
-- [ ] ⬜ Aufgabe 2: OWASP ZAP ist eingebunden (zaproxy/action-*)
-- [ ] ⬜ Aufgabe 2: Ziel-URL bzw. laufende Anwendung im Workflow definiert
-- [ ] ⬜ Doku: DOKUMENTATION.md vorhanden
-- [ ] ⬜ Doku: Befunde und Massnahmen dokumentiert
-- [ ] ⬜ Doku: DOKUMENTATION.md hat ausreichend Inhalt (mind. 100 Wörter)
+- [ ] ⬜ P1: Drei Snyk-Findings mit Paket bzw. Datei und Severity eingetragen
+- [ ] ⬜ P1: Mindestens ein Finding aus SCA und eines aus SAST
+- [ ] ⬜ P1: Jedes Finding ist eingestuft (echtes Risiko oder False Positive) und hat eine Massnahme
+- [ ] ⬜ P2: Zwei ZAP-Alerts mit Risiko, URL und Behebung dokumentiert
+- [ ] ⬜ P2: SQL-Injection unter /users?id= von Hand verifiziert (Request und Beobachtung)
+- [ ] ⬜ P2: Vergleich SAST / DAST ausgefüllt
 
-Zusaetzlich manuell abgenommen (nicht automatisch geprueft):
+Zusätzlich, nicht bewertet:
 
-- Auftrag 1 und 2 lokal an DSVPWA durchgefuehrt (Snyk-CLI, ZAP im Container)
-- Findings priorisiert und Behebungsvorschlaege formuliert
+- P3 (für Schnelle): SQL-Injection mit einem parametrisierten Query behoben
+  und im Re-Scan verschwunden. Die Prüfung meldet es mit ⭐, wenn der Fix
+  drin ist.
 
-## Abnahmekriterien selber pruefen
+## Abnahmekriterien selber prüfen
 
-**Lokal** — jederzeit, ohne Push:
+**Lokal**, jederzeit und ohne Push:
 
 ```bash
 bash .github/classroom/grade.sh
 ```
 
-Das Skript liest die Tagesnummer aus `.classroom50.yaml`. Du kannst sie
-auch erzwingen:
+Das Skript liest die Tagesnummer aus `.classroom50.yaml`. Du kannst sie auch
+erzwingen:
 
 ```bash
 CLASSROOM_DAY=15 bash .github/classroom/grade.sh
 ```
 
-Die Ausgabe listet jedes Kriterium mit ✅ oder ❌ und nennt bei jedem ❌
-den konkreten Loesungshinweis. Sobald ein Kriterium fehlt, endet das
-Skript mit Exit-Code 1.
+Die Ausgabe listet jedes Kriterium mit ✅ oder ❌ und nennt bei jedem ❌ den
+konkreten Lösungshinweis. Sobald ein Kriterium fehlt, endet das Skript mit
+Exit-Code 1.
 
-**In GitHub** — bei jedem Push:
+**In GitHub**, bei jedem Push:
 
-Der Workflow **🎓 Classroom Autograding** laeuft automatisch und hakt die
-erfuellten Kriterien oben im README ab. Ergebnis im Tab **Actions** →
-letzter Run → Job *Abnahmekriterien pruefen*.
+Der Workflow **🎓 Classroom Autograding** läuft automatisch und hakt die
+erfüllten Kriterien oben im README ab. Ergebnis im Tab
+**Actions** → letzter Run → Job *Abnahmekriterien prüfen*.
 
-Die Punktzahl ist **anteilig**: jedes erfuellte Abnahmekriterium zaehlt einen
-Punkt (z. B. `Points 8/13`). Gruen wird der Lauf erst, wenn alle Kriterien
-erfuellt sind — Teilpunkte gibt es aber ab dem ersten.
+Die Punktzahl ist **anteilig**: Jedes erfüllte Abnahmekriterium zählt einen
+Punkt (z. B. `Points 4/6`). Grün wird der Lauf erst, wenn alle Kriterien
+erfüllt sind, Teilpunkte gibt es aber ab dem ersten.
 
-## Musterloesung
+## Musterlösung
 
-Nach dem Unterricht findest du die Musterloesung im Repository
+Nach dem Unterricht findest du die Musterlösung im Repository
 [`tbzdevops/musterloesungen-praxisauftraege`](https://github.com/tbzdevops/musterloesungen-praxisauftraege/tree/day_15_solution)
 auf dem Branch `day_15_solution`.
